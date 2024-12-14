@@ -1,0 +1,190 @@
+This file provides three MAGMA codes for this paper
+[Huan Sun, Qin Yue, Xue Jia, and Fengwei Li, List decoding algorithm of  GRS code for correcting $\lfloor\frac{d+1}{2}\rfloor$ errors]
+
+
+A. The MAGMA code  in the Algorithm 1 for decoding [n,n-d+1,d] GRS code C with even d:
+
+
+function euclidean(d, g, S)
+i:=2;
+F:=BaseRing(g);
+P:=PolynomialRing(F);
+q:=[P!0, 0];
+r:=[g, S];
+u:=[P!1, 0];
+w:=[P!0, 1];
+while (r[i] ne 0) and (Degree(r[i]) ge d/2-1) do 
+i:=i+1;
+q[i]:=r[i-2] div r[i-1];
+r[i]:=r[i-2] mod r[i-1];
+u[i]:=u[i-2]-q[i]*u[i-1];
+w[i]:=w[i-2]-q[i]*w[i-1];
+end while;
+return([r[i-1],r[i],w[i-1],w[i]]);
+end function;
+
+
+//[5,2,4] GRS code 
+
+p:=3;                      //input parameter p of finite field Fp
+m:=2;                      //input m such that q=p^m
+n:=5;                      //input the length n of code
+d:=4;                      //input the minimum distance d of code
+K:=FiniteField(p);
+F<z>:=ext<K|m>;
+P<x> := PolynomialRing(F);
+a:=Vector(F,n,[1,z,z^2,z^4,z^5]);    //input a 
+v:=Vector(F,n,[z^2,1,1,z^3,1]);     //input v
+y:=Vector(F,n,[1,0,1,z^2,z^5]);       //input received vector y
+
+
+H:= ZeroMatrix(F, d-1, n);
+for i in [1..d-1] do
+  for j in [1..n] do
+    H[i,j]:=v[j]*(a[j])^(i-1);
+  end for;
+end for;
+H;                          
+Y:=Transpose(H);
+s:=y*Y;
+s;
+S:=0;
+for i in [1..d-1] do
+   S:=S+s[i]*x^(i-1);
+end for;
+S;
+g:=x^(d-1);
+E:=euclidean(d, g, S);
+sigma:=E[4];
+tau:=E[2];
+
+if Degree(E[4]) eq d/2 then
+   j:=-1;
+   while j le p^m-2 do
+   J:={}; e:=ZeroMatrix(F,1,n)[1];
+   for i in [1..n] do
+      if Evaluate(sigma, (a[i])^(-1)) eq 0 then
+         Include(~J,i);
+         if Evaluate(Derivative(sigma), (a[i])^(-1)) eq 0 then
+            break;
+         end if;
+         e[i]:=-a[i]*Evaluate(tau, (a[i])^(-1))/(v[i]*Evaluate(Derivative(sigma), (a[i])^(-1)));
+      end if;
+   end for;
+   if #J eq Degree(sigma) then
+      c:=y-e;
+      c;
+   end if;
+   j:=j+1;
+   sigma:=E[4]+z^j*E[3];
+   tau:=E[2]+z^j*E[1];
+   end while;
+end if;
+
+
+
+
+
+
+
+
+
+B. The MAGMA code in the Algorithm 2 for decoding [n,n-d+1,d] GRS code C with odd d:
+
+
+function euclidean(d, g, S)
+i:=2;
+F:=BaseRing(g);
+P:=PolynomialRing(F);
+q:=[P!0, 0];
+r:=[g, S];
+u:=[P!1, 0];
+w:=[P!0, 1];
+while (r[i] ne 0) and (Degree(r[i]) ge d/2-1) do 
+i:=i+1;
+q[i]:=r[i-2] div r[i-1];
+r[i]:=r[i-2] mod r[i-1];
+u[i]:=u[i-2]-q[i]*u[i-1];
+w[i]:=w[i-2]-q[i]*w[i-1];
+end while;
+return([r[i-1],r[i],w[i-1],w[i]]);
+end function;
+
+
+//C:[7,3,5] with 3 errors.C1:[7,2,6]
+
+p:=3;               //input parameter p of finite field Fp
+m:=2;               //input m such that q=p^m
+n:=7;               //input length of C: n
+d:=5;               //input distance of C: d
+d1:=d+1;            //distance of C1 is d+1
+K:=FiniteField(p);
+F<z>:=ext<K|m>;
+P<x> := PolynomialRing(F);
+a:=Vector(F,n,[1,z,z^2,z^3,z^4,z^5,z^7]);  //input a
+v:=Vector(F,n,[z^2,1,1,z^3,z^4,1,z^5]);    //input v
+y:=Vector(F,n,[z^2, 0, 1, z, z^3, z^6, z^2]);      //input recieve vector y
+
+
+H:= ZeroMatrix(F, d-1, n);
+for i in [1..d-1] do
+  for j in [1..n] do
+    H[i,j]:=v[j]*(a[j])^(i-1);
+  end for;
+end for;
+H;
+Y:=Transpose(H);
+s:=y*Y;
+s;
+S:=0;
+for i in [1..d-1] do
+   S:=S+s[i]*x^(i-1);
+end for;
+S;
+
+beta:= ZeroMatrix(F, 1, n);     //the last row of H1.
+for j in [1..n] do
+  beta[1,j]:=v[j]*(a[j])^(d-1);
+end for;
+beta;
+
+//For b in Fq, apply S(x)+b*x^(d-1) and g1(x)=x^d to Algorithm 1 
+b:=0;                          //initial b=0 in Fq
+l:=-1;
+g1:=x^(d);
+while l le p^m-2 do
+S1:=S+b*x^(d-1);
+E1:=euclidean(d+1, g1, S1);
+sigma1:=E1[4];
+tau1:=E1[2];
+if Degree(E1[4]) eq (d+1)/2 then
+   j:=-1;
+   while j le p^m-2 do
+   J:={}; e:=ZeroMatrix(F,1,n)[1];
+   for i in [1..n] do
+      if Evaluate(sigma1, (a[i])^(-1)) eq 0 then
+         Include(~J,i);
+         if Evaluate(Derivative(sigma1), (a[i])^(-1)) eq 0 then
+            break;
+         end if;
+         e[i]:=-a[i]*Evaluate(tau1, (a[i])^(-1))/(v[i]*Evaluate(Derivative(sigma1), (a[i])^(-1)));
+      end if;
+   end for;
+   if #J eq Degree(sigma1) then
+      c:=y-e;  
+      b;c;e;J;                        //output b,c,e,J
+   end if;
+   j:=j+1;
+   sigma1:=E1[4]+z^j*E1[3];
+   tau1:=E1[2]+z^j*E1[1];
+   end while;
+end if;
+l:=l+1;
+b:=z^l;
+end while;
+
+
+
+
+
+
